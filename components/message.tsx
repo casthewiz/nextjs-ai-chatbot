@@ -3,7 +3,6 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import equal from "fast-deep-equal";
 import { motion } from "framer-motion";
 import { memo, useState } from "react";
-import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
 import { useDataStream } from "./data-stream-provider";
@@ -28,7 +27,6 @@ import { Weather } from "./weather";
 const PurePreviewMessage = ({
   chatId,
   message,
-  vote,
   isLoading,
   setMessages,
   regenerate,
@@ -37,7 +35,6 @@ const PurePreviewMessage = ({
 }: {
   chatId: string;
   message: ChatMessage;
-  vote: Vote | undefined;
   isLoading: boolean;
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
   regenerate: UseChatHelpers<ChatMessage>["regenerate"];
@@ -272,12 +269,10 @@ const PurePreviewMessage = ({
 
           {!isReadonly && (
             <MessageActions
-              chatId={chatId}
               isLoading={isLoading}
               key={`action-${message.id}`}
               message={message}
               setMode={setMode}
-              vote={vote}
             />
           )}
         </div>
@@ -299,9 +294,6 @@ export const PreviewMessage = memo(
       return false;
     }
     if (!equal(prevProps.message.parts, nextProps.message.parts)) {
-      return false;
-    }
-    if (!equal(prevProps.vote, nextProps.vote)) {
       return false;
     }
 

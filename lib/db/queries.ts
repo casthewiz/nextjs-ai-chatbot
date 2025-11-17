@@ -80,6 +80,62 @@ export async function createGuestUser() {
   }
 }
 
+// Get or create an anonymous user for public access
+let anonymousUserId: string | null = null;
+
+export async function getAnonymousUserId(): Promise<string> {
+  if (anonymousUserId) {
+    return anonymousUserId;
+  }
+
+  try {
+    // Try to find an existing anonymous user
+    const anonymousUsers = await db
+      .select()
+      .from(user)
+      .where(eq(user.email, "anonymous@public"));
+
+    if (anonymousUsers.length > 0) {
+      anonymousUserId = anonymousUsers[0].id;
+      return anonymousUserId;
+    }
+  } catch (_error) {
+    // If query fails, try to create user
+  }
+
+  try {
+    // Create a new anonymous user
+    const [newUser] = await db
+      .insert(user)
+      .values({
+        email: "anonymous@public",
+        password: generateHashedPassword(generateUUID()),
+      })
+      .returning({
+        id: user.id,
+      });
+
+    anonymousUserId = newUser.id;
+    return anonymousUserId;
+  } catch (_error) {
+    // If insert fails (e.g., unique constraint), try to fetch again
+    const anonymousUsers = await db
+      .select()
+      .from(user)
+      .where(eq(user.email, "anonymous@public"));
+
+    if (anonymousUsers.length > 0) {
+      anonymousUserId = anonymousUsers[0].id;
+      return anonymousUserId;
+    }
+
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get or create anonymous user"
+    );
+  }
+}
+
 export async function saveChat({
   id,
   userId,
@@ -134,7 +190,7 @@ export async function deleteAllChatsByUserId({ userId }: { userId: string }) {
       return { deletedCount: 0 };
     }
 
-    const chatIds = userChats.map(c => c.id);
+    const chatIds = userChats.map((c) => c.id);
 
     await db.delete(vote).where(inArray(vote.chatId, chatIds));
     await db.delete(message).where(inArray(message.chatId, chatIds));

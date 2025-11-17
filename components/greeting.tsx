@@ -22,7 +22,7 @@ export const Greeting = () => {
         initial={{ opacity: 0, y: 10 }}
         transition={{ delay: 0.6 }}
       >
-        How can I help you today?
+        Ask a pricing question about properties anywhere in the United States!
       </motion.div>
     </div>
   );

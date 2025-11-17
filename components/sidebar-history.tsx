@@ -2,7 +2,7 @@
 
 import { isToday, isYesterday, subMonths, subWeeks } from "date-fns";
 import { motion } from "framer-motion";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import type { User } from "next-auth";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -41,8 +41,6 @@ export type ChatHistory = {
   hasMore: boolean;
 };
 
-const PAGE_SIZE = 20;
-
 const groupChatsByDate = (chats: Chat[]): GroupedChats => {
   const now = new Date();
   const oneWeekAgo = subWeeks(now, 1);
@@ -77,24 +75,10 @@ const groupChatsByDate = (chats: Chat[]): GroupedChats => {
 };
 
 export function getChatHistoryPaginationKey(
-  pageIndex: number,
-  previousPageData: ChatHistory
+  _pageIndex: number,
+  _previousPageData: ChatHistory
 ) {
-  if (previousPageData && previousPageData.hasMore === false) {
-    return null;
-  }
-
-  if (pageIndex === 0) {
-    return `/api/history?limit=${PAGE_SIZE}`;
-  }
-
-  const firstChatFromPage = previousPageData.chats.at(-1);
-
-  if (!firstChatFromPage) {
-    return null;
-  }
-
-  return `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}`;
+  return null;
 }
 
 export function SidebarHistory({ user }: { user: User | undefined }) {
@@ -102,17 +86,14 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
   const { id } = useParams();
 
   const {
-    data: paginatedChatHistories,
+    data: paginatedChatHistories = [],
     setSize,
     isValidating,
     isLoading,
-    mutate,
   } = useSWRInfinite<ChatHistory>(getChatHistoryPaginationKey, fetcher, {
     fallbackData: [],
   });
 
-  const router = useRouter();
-  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const hasReachedEnd = paginatedChatHistories
@@ -124,32 +105,8 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     : false;
 
   const handleDelete = () => {
-    const deletePromise = fetch(`/api/chat?id=${deleteId}`, {
-      method: "DELETE",
-    });
-
-    toast.promise(deletePromise, {
-      loading: "Deleting chat...",
-      success: () => {
-        mutate((chatHistories) => {
-          if (chatHistories) {
-            return chatHistories.map((chatHistory) => ({
-              ...chatHistory,
-              chats: chatHistory.chats.filter((chat) => chat.id !== deleteId),
-            }));
-          }
-        });
-
-        return "Chat deleted successfully";
-      },
-      error: "Failed to delete chat",
-    });
-
+    toast.error("Chat deletion is not available");
     setShowDeleteDialog(false);
-
-    if (deleteId === id) {
-      router.push("/");
-    }
   };
 
   if (!user) {
@@ -230,8 +187,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                             chat={chat}
                             isActive={chat.id === id}
                             key={chat.id}
-                            onDelete={(chatId) => {
-                              setDeleteId(chatId);
+                            onDelete={() => {
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
@@ -250,8 +206,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                             chat={chat}
                             isActive={chat.id === id}
                             key={chat.id}
-                            onDelete={(chatId) => {
-                              setDeleteId(chatId);
+                            onDelete={() => {
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
@@ -270,8 +225,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                             chat={chat}
                             isActive={chat.id === id}
                             key={chat.id}
-                            onDelete={(chatId) => {
-                              setDeleteId(chatId);
+                            onDelete={() => {
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
@@ -290,8 +244,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                             chat={chat}
                             isActive={chat.id === id}
                             key={chat.id}
-                            onDelete={(chatId) => {
-                              setDeleteId(chatId);
+                            onDelete={() => {
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
@@ -310,8 +263,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                             chat={chat}
                             isActive={chat.id === id}
                             key={chat.id}
-                            onDelete={(chatId) => {
-                              setDeleteId(chatId);
+                            onDelete={() => {
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
