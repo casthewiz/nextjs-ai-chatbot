@@ -52,7 +52,7 @@ export function Chat({
   currentModelIdRef.current = currentModelId;
 
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  const status: UseChatHelpers<ChatMessage>["status"] = "ready";
+  const [status, setStatus] = useState<UseChatHelpers<ChatMessage>["status"]>("ready");
   const stop = () => {};
   const regenerate = () => {};
   const resumeStream = () => {};
@@ -88,6 +88,7 @@ export function Chat({
               selectedVisibilityType={visibilityType}
               setInput={setInput}
               setMessages={setMessages}
+              setStatus={setStatus}
               status={status}
             />
           )}

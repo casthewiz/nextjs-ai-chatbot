@@ -22,7 +22,6 @@ import { ArtifactCloseButton } from "./artifact-close-button";
 import { ArtifactMessages } from "./artifact-messages";
 import { MultimodalInput } from "./multimodal-input";
 import { Toolbar } from "./toolbar";
-import { useSidebar } from "./ui/sidebar";
 import { VersionFooter } from "./version-footer";
 import type { VisibilityType } from "./visibility-selector";
 
@@ -84,8 +83,6 @@ function PureArtifact({
 
   const [mode, setMode] = useState<"edit" | "diff">("edit");
   const [currentVersionIndex, setCurrentVersionIndex] = useState(-1);
-
-  const { open: isSidebarOpen } = useSidebar();
 
   const saveContent = useCallback(
     (_updatedContent: string, _debounce: boolean) => {
@@ -149,11 +146,11 @@ function PureArtifact({
               animate={{ width: windowWidth, right: 0 }}
               className="fixed h-dvh bg-background"
               exit={{
-                width: isSidebarOpen ? windowWidth - 256 : windowWidth,
+                width: windowWidth,
                 right: 0,
               }}
               initial={{
-                width: isSidebarOpen ? windowWidth - 256 : windowWidth,
+                width: windowWidth,
                 right: 0,
               }}
             />

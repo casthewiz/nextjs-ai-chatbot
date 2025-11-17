@@ -14,6 +14,8 @@ import {
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 import type { ChatMessage } from "@/lib/types";
+import type { ListingsResponse } from "@/lib/types/listings";
+import type { OpenAIResponse } from "@/lib/types/openai-response";
 import { cn } from "@/lib/utils";
 import { PromptInput, PromptInputTextarea } from "./elements/prompt-input";
 import { SuggestedActions } from "./suggested-actions";
@@ -21,11 +23,15 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import type { VisibilityType } from "./visibility-selector";
 
+// Regex pattern for matching JSON objects with listings (defined at top level for performance)
+const LISTINGS_JSON_PATTERN = /\{[\s\S]*"listings"[\s\S]*\}/;
+
 function PureMultimodalInput({
   chatId,
   input,
   setInput,
   status,
+  setStatus,
   messages,
   setMessages,
   className,
@@ -35,6 +41,7 @@ function PureMultimodalInput({
   input: string;
   setInput: Dispatch<SetStateAction<string>>;
   status: UseChatHelpers<ChatMessage>["status"];
+  setStatus: Dispatch<SetStateAction<UseChatHelpers<ChatMessage>["status"]>>;
   messages: UIMessage[];
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
   className?: string;
@@ -97,6 +104,7 @@ function PureMultimodalInput({
     }
 
     setIsSubmitting(true);
+    setStatus("submitted");
 
     // Clear any existing debounce timer
     if (debounceTimerRef.current) {
@@ -154,39 +162,139 @@ function PureMultimodalInput({
         throw new Error("Failed to get response from OpenAI");
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as OpenAIResponse;
 
       // Extract the response text from the OpenAI response
-      // The structure may vary, so we'll handle it generically
-      const responseText =
-        data.choices?.[0]?.message?.content ||
-        data.content ||
-        JSON.stringify(data, null, 2);
+      // The response has output_text field which contains the final text
+      // Fallback to extracting from output array if output_text is not available
+      let responseText: string | undefined = data.output_text;
+
+      if (!responseText && data.output) {
+        // Find the message output item and extract text from content
+        const messageOutput = data.output.find(
+          (
+            item
+          ): item is Extract<
+            OpenAIResponse["output"][number],
+            { type: "message" }
+          > => item.type === "message"
+        );
+        if (messageOutput?.content) {
+          const textContent = messageOutput.content.find(
+            (content) => content.type === "output_text"
+          );
+          if (textContent?.text) {
+            responseText = textContent.text;
+          }
+        }
+      }
+
+      // Final fallback for backward compatibility
+      if (!responseText) {
+        const fallbackData = data as unknown as {
+          choices?: Array<{ message?: { content?: string } }>;
+          content?: string;
+        };
+        responseText =
+          fallbackData.choices?.[0]?.message?.content ||
+          fallbackData.content ||
+          "No response text available";
+      }
+
+      // Ensure we have a valid response text
+      if (
+        !responseText ||
+        typeof responseText !== "string" ||
+        responseText.trim().length === 0
+      ) {
+        throw new Error("Empty or invalid response from OpenAI");
+      }
+
+      // Try to parse JSON from the response text
+      let parsedData: ListingsResponse | null = null;
+      let displayText = responseText;
+
+      try {
+        // First, try to parse the entire response as JSON
+        try {
+          const parsed = JSON.parse(responseText.trim()) as ListingsResponse;
+          if (parsed.listings && Array.isArray(parsed.listings)) {
+            parsedData = parsed;
+            displayText = ""; // No text if entire response is JSON
+          }
+        } catch {
+          // If entire response is not JSON, try to find JSON within the text
+          const jsonMatch = responseText.match(LISTINGS_JSON_PATTERN);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]) as ListingsResponse;
+            if (parsed.listings && Array.isArray(parsed.listings)) {
+              parsedData = parsed;
+              // Extract any text before/after the JSON for context
+              const beforeJson = responseText
+                .substring(0, jsonMatch.index ?? 0)
+                .trim();
+              const afterJson = responseText
+                .substring((jsonMatch.index ?? 0) + jsonMatch[0].length)
+                .trim();
+              displayText = [beforeJson, afterJson]
+                .filter(Boolean)
+                .join("\n\n");
+            }
+          }
+        }
+      } catch (parseError) {
+        // If JSON parsing fails, just use the text as-is
+        console.debug("Could not parse JSON from response:", parseError);
+      }
+
+      // Build message parts
+      const parts: ChatMessage["parts"] = [];
+
+      // Add text part if there's any text content
+      if (displayText && displayText.trim().length > 0) {
+        parts.push({
+          type: "text",
+          text: displayText,
+        });
+      }
+
+      // Add listings part if we have structured data
+      if (parsedData?.listings && parsedData.listings.length > 0) {
+        parts.push({
+          type: "data-listings",
+          data: parsedData,
+        } as unknown as ChatMessage["parts"][number]);
+      }
+
+      // Fallback: if no parts were created, add the original text
+      if (parts.length === 0) {
+        parts.push({
+          type: "text",
+          text: responseText,
+        });
+      }
 
       // Add assistant message
       const assistantMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        parts: [
-          {
-            type: "text",
-            text: responseText,
-          },
-        ],
+        parts,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+      setStatus("ready");
     } catch (error) {
       console.error("Error calling OpenAI prompt API:", error);
       toast.error("Failed to get response from OpenAI. Please try again.");
       // Remove the user message if the API call failed
       setMessages((prev) => prev.slice(0, -1));
+      setStatus("ready");
     } finally {
       setLocalStorageInput("");
       resetHeight();
       setInput("");
-      setZipCodeCity("");
-      setState("");
+      // Keep city and state values locked after first submission
+      // Don't clear them: setZipCodeCity("") and setState("") removed
 
       if (width && width > 768) {
         textareaRef.current?.focus();
@@ -208,6 +316,7 @@ function PureMultimodalInput({
     chatId,
     resetHeight,
     setMessages,
+    setStatus,
     isSubmitting,
     status,
   ]);
@@ -249,6 +358,7 @@ function PureMultimodalInput({
           <div className="flex flex-col gap-3 sm:flex-row">
             <Input
               className="flex-1"
+              disabled={messages.length > 0}
               name="zipCodeCity"
               onChange={(e) => {
                 setZipCodeCity(e.target.value);
@@ -259,6 +369,7 @@ function PureMultimodalInput({
             />
             <Input
               className="flex-1"
+              disabled={messages.length > 0}
               name="state"
               onChange={(e) => {
                 setState(e.target.value);

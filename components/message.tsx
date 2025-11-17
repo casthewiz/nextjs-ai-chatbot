@@ -24,6 +24,8 @@ import { MessageEditor } from "./message-editor";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
 import { Weather } from "./weather";
+import { ListingsDisplay } from "./listings-display";
+import type { ListingsResponse } from "@/lib/types/listings";
 
 const PurePreviewMessage = ({
   chatId,
@@ -116,6 +118,24 @@ const PurePreviewMessage = ({
                   reasoning={part.text}
                 />
               );
+            }
+
+            if (type === "data-listings") {
+              const listingsData = (part as {
+                type: "data-listings";
+                data: ListingsResponse;
+              }).data;
+              if (
+                listingsData?.listings &&
+                Array.isArray(listingsData.listings) &&
+                listingsData.listings.length > 0
+              ) {
+                return (
+                  <div key={key} className="w-full">
+                    <ListingsDisplay listings={listingsData.listings} />
+                  </div>
+                );
+              }
             }
 
             if (type === "text") {

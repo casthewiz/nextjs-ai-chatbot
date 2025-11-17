@@ -7,6 +7,7 @@ import type { requestSuggestions } from "./ai/tools/request-suggestions";
 import type { updateDocument } from "./ai/tools/update-document";
 import type { Suggestion } from "./db/schema";
 import type { AppUsage } from "./usage";
+import type { ListingsResponse } from "./types/listings";
 
 export type DataPart = { type: "append-message"; message: string };
 
@@ -43,6 +44,7 @@ export type CustomUIDataTypes = {
   clear: null;
   finish: null;
   usage: AppUsage;
+  listings: ListingsResponse;
 };
 
 export type ChatMessage = UIMessage<
