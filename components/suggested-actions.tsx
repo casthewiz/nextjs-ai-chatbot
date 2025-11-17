@@ -1,19 +1,21 @@
 "use client";
 
-import type { UseChatHelpers } from "@ai-sdk/react";
 import { motion } from "framer-motion";
-import { memo } from "react";
-import type { ChatMessage } from "@/lib/types";
+import { type Dispatch, memo, type SetStateAction } from "react";
 import { Suggestion } from "./elements/suggestion";
 import type { VisibilityType } from "./visibility-selector";
 
 type SuggestedActionsProps = {
   chatId: string;
-  sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
+  setInput: Dispatch<SetStateAction<string>>;
   selectedVisibilityType: VisibilityType;
+  textareaRef: React.RefObject<HTMLTextAreaElement>;
 };
 
-function PureSuggestedActions({ chatId, sendMessage }: SuggestedActionsProps) {
+function PureSuggestedActions({
+  setInput,
+  textareaRef,
+}: SuggestedActionsProps) {
   const suggestedActions = [
     "What is the average home price in my area?",
     "Show me property value trends for the last 5 years",
@@ -37,11 +39,11 @@ function PureSuggestedActions({ chatId, sendMessage }: SuggestedActionsProps) {
           <Suggestion
             className="h-auto w-full whitespace-normal p-3 text-left"
             onClick={(suggestion) => {
-              window.history.replaceState({}, "", `/chat/${chatId}`);
-              sendMessage({
-                role: "user",
-                parts: [{ type: "text", text: suggestion }],
-              });
+              setInput(suggestion);
+              // Focus the textarea after setting the input
+              setTimeout(() => {
+                textareaRef.current?.focus();
+              }, 0);
             }}
             suggestion={suggestedAction}
           >

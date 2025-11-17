@@ -75,7 +75,6 @@ export function Chat({
           isReadonly={isReadonly}
           messages={messages}
           regenerate={regenerate}
-          selectedModelId={initialChatModel}
           setMessages={setMessages}
           status={status}
         />
@@ -87,7 +86,6 @@ export function Chat({
               input={input}
               messages={messages}
               selectedVisibilityType={visibilityType}
-              sendMessage={sendMessage}
               setInput={setInput}
               setMessages={setMessages}
               status={status}

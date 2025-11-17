@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { memo, useState } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
+import { AILoadingSpinner } from "./ai-loading-spinner";
 import { useDataStream } from "./data-stream-provider";
 import { DocumentToolResult } from "./document";
 import { DocumentPreview } from "./document-preview";
@@ -320,12 +321,9 @@ export const ThinkingMessage = () => {
         </div>
 
         <div className="flex w-full flex-col gap-2 md:gap-4">
-          <div className="p-0 text-muted-foreground text-sm">
-            Thinking...
-          </div>
+          <AILoadingSpinner />
         </div>
       </div>
     </motion.div>
   );
 };
-

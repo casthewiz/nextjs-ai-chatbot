@@ -17,6 +17,7 @@ export async function POST(request: Request) {
       apiKey,
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response = await openai.responses.create({
       prompt: {
         id: "pmpt_691b97cbd27c8193bd9bf14df71874050cce839fd2cd0152",
@@ -26,20 +27,21 @@ export async function POST(request: Request) {
           state: state || "",
         },
       },
-      input: input ? [input] : [],
+      input: input ? [{ type: "message", role: "user", content: input }] : [],
       reasoning: {
         summary: "auto",
       },
       store: true,
-      include: [
-        "reasoning.encrypted_content",
-        "web_search_call.action.sources",
-      ],
-    });
+      include: ["reasoning.encrypted_content"],
+    } as any);
 
     return Response.json(response, { status: 200 });
   } catch (error) {
     console.error("Error calling OpenAI prompt API:", error);
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
 
     if (error instanceof ChatSDKError) {
       return error.toResponse();

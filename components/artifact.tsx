@@ -16,7 +16,7 @@ import { imageArtifact } from "@/artifacts/image/client";
 import { sheetArtifact } from "@/artifacts/sheet/client";
 import { textArtifact } from "@/artifacts/text/client";
 import { useArtifact } from "@/hooks/use-artifact";
-import type { ChatMessage } from "@/lib/types";
+import type { Attachment, ChatMessage } from "@/lib/types";
 import { ArtifactActions } from "./artifact-actions";
 import { ArtifactCloseButton } from "./artifact-close-button";
 import { ArtifactMessages } from "./artifact-messages";
@@ -61,7 +61,6 @@ function PureArtifact({
   messages,
   setMessages,
   regenerate,
-  votes,
   isReadonly,
   selectedVisibilityType,
   selectedModelId,
@@ -75,7 +74,6 @@ function PureArtifact({
   setAttachments: Dispatch<SetStateAction<Attachment[]>>;
   messages: ChatMessage[];
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
-  votes: Vote[] | undefined;
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   regenerate: UseChatHelpers<ChatMessage>["regenerate"];
   isReadonly: boolean;
@@ -203,7 +201,6 @@ function PureArtifact({
                   regenerate={regenerate}
                   setMessages={setMessages}
                   status={status}
-                  votes={votes}
                 />
 
                 <div className="relative flex w-full flex-row items-end gap-2 px-4 pb-4">
@@ -215,7 +212,6 @@ function PureArtifact({
                     messages={messages}
                     selectedModelId={selectedModelId}
                     selectedVisibilityType={selectedVisibilityType}
-                    sendMessage={sendMessage}
                     setAttachments={setAttachments}
                     setInput={setInput}
                     setMessages={setMessages}
@@ -354,8 +350,7 @@ function PureArtifact({
               </AnimatePresence>
             </div>
 
-            <AnimatePresence>
-            </AnimatePresence>
+            <AnimatePresence />
           </motion.div>
         </motion.div>
       )}
@@ -365,9 +360,6 @@ function PureArtifact({
 
 export const Artifact = memo(PureArtifact, (prevProps, nextProps) => {
   if (prevProps.status !== nextProps.status) {
-    return false;
-  }
-  if (!equal(prevProps.votes, nextProps.votes)) {
     return false;
   }
   if (prevProps.input !== nextProps.input) {

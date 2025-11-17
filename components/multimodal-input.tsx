@@ -28,7 +28,6 @@ function PureMultimodalInput({
   status,
   messages,
   setMessages,
-  sendMessage,
   className,
   selectedVisibilityType,
 }: {
@@ -38,7 +37,6 @@ function PureMultimodalInput({
   status: UseChatHelpers<ChatMessage>["status"];
   messages: UIMessage[];
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
-  sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   className?: string;
   selectedVisibilityType: VisibilityType;
 }) {
@@ -69,6 +67,8 @@ function PureMultimodalInput({
   );
   const [zipCodeCity, setZipCodeCity] = useState("");
   const [state, setState] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -91,6 +91,19 @@ function PureMultimodalInput({
   };
 
   const submitForm = useCallback(async () => {
+    // Prevent multiple submissions
+    if (isSubmitting || status !== "ready") {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    // Clear any existing debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+
     window.history.pushState({}, "", `/chat/${chatId}`);
 
     // Build the message text with location info if provided
@@ -168,16 +181,22 @@ function PureMultimodalInput({
       toast.error("Failed to get response from OpenAI. Please try again.");
       // Remove the user message if the API call failed
       setMessages((prev) => prev.slice(0, -1));
-    }
+    } finally {
+      setLocalStorageInput("");
+      resetHeight();
+      setInput("");
+      setZipCodeCity("");
+      setState("");
 
-    setLocalStorageInput("");
-    resetHeight();
-    setInput("");
-    setZipCodeCity("");
-    setState("");
+      if (width && width > 768) {
+        textareaRef.current?.focus();
+      }
 
-    if (width && width > 768) {
-      textareaRef.current?.focus();
+      // Debounce: wait 500ms before allowing another submission
+      debounceTimerRef.current = setTimeout(() => {
+        setIsSubmitting(false);
+        debounceTimerRef.current = null;
+      }, 500);
     }
   }, [
     input,
@@ -189,7 +208,18 @@ function PureMultimodalInput({
     chatId,
     resetHeight,
     setMessages,
+    isSubmitting,
+    status,
   ]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className={cn("relative flex w-full flex-col gap-4", className)}>
@@ -197,7 +227,8 @@ function PureMultimodalInput({
         <SuggestedActions
           chatId={chatId}
           selectedVisibilityType={selectedVisibilityType}
-          sendMessage={sendMessage}
+          setInput={setInput}
+          textareaRef={textareaRef}
         />
       )}
 
@@ -207,6 +238,8 @@ function PureMultimodalInput({
           event.preventDefault();
           if (status !== "ready") {
             toast.error("Please wait for the model to finish its response!");
+          } else if (isSubmitting) {
+            toast.error("Please wait before submitting again!");
           } else {
             submitForm();
           }
@@ -253,9 +286,10 @@ function PureMultimodalInput({
           <Button
             className="rounded-md bg-muted px-6 py-2 text-foreground transition-colors duration-200 hover:bg-muted/90 disabled:bg-muted disabled:text-muted-foreground"
             data-testid="send-button"
+            disabled={isSubmitting || status !== "ready"}
             type="submit"
           >
-            Submit
+            {isSubmitting ? "Submitting..." : "Submit"}
           </Button>
         </div>
       </PromptInput>
